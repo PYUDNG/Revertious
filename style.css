@@ -1,0 +1,48 @@
+.center {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+body {
+	background-color: #555555;
+}
+
+div.container {
+	display: grid;
+	grid-template-columns: 3fr 1fr;
+	background-color: #888888;
+}
+
+div.controlpanel {
+	display: grid;
+	grid-template-rows: repeat(4, 1fr);
+}
+
+div.btn {
+	text-align: center;
+	width: 80%;
+	height: 7em;
+	line-height: 7em;
+	background-color: #99CCFF;
+}
+
+div.btn.disabled, div.btn.disabled:hover {
+	background-color: #99CCFFA8;
+	color: #000000A8;
+	cursor: default;
+}
+
+div.btn:hover {
+	background-color: #6699CC;
+	cursor: pointer;
+}
+
+.noselect {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
