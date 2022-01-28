@@ -31,11 +31,15 @@ function RevertiousGUI(RT, detail={
 		// Init Game Data Structure
 		const Elms = GUI.Elements = {};
 
+		// Screen long/tall mode
+		const longtall = window.innerWidth >= window.innerHeight ? 'long' : 'tall';
+
 		// Make Elements centered
 		document.body.classList.add('center');
 		// Create Game Container
 		const container = Elms.container = document.createElement('div');
 		container.classList.add('container');
+		container.classList.add(longtall);
 		document.body.appendChild(container);
 
 		// Create Game Board
@@ -49,6 +53,7 @@ function RevertiousGUI(RT, detail={
 		// Create Control Panel
 		const controPanel = Elms.controPanel = document.createElement('div');
 		controPanel.classList.add('controlpanel');
+		controPanel.classList.add(longtall);
 		container.appendChild(controPanel);
 
 		// Create Control Buttons
@@ -82,6 +87,7 @@ function RevertiousGUI(RT, detail={
 			btnCtnr.classList.add('center');
 			btn.classList.add('btn');
 			btn.classList.add('noselect');
+			btn.classList.add(longtall);
 			btnCtnr.appendChild(btn);
 			return {
 				container: btnCtnr,

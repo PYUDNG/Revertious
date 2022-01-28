@@ -31,7 +31,7 @@ function Revertious(detail={
 		gridWidth = detail.gridWidth;
 		padding   = detail.padding;
 		lineWidth = detail.lineWidth;
-		gridWidth <= 0 && (gridWidth = Math.floor((Math.min(window.innerWidth/4*3, window.innerHeight)) / (boardsize+1)))
+		gridWidth <= 0 && (gridWidth = Math.floor(Math.min(Math.max(window.innerWidth, window.innerHeight)/4*3, Math.min(window.innerWidth, window.innerHeight)) / (boardsize+1)));
 		padding <= 0 && (padding = Math.floor(gridWidth / 2));
 
 		// Init
