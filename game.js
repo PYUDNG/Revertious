@@ -1,7 +1,15 @@
 /*
 	Revertious Game Main
 	Args:
-		None
+		Detail: {
+			boardsize,
+			padding,
+			lineWidth,
+			gui,
+			ongameturn,
+			ongamestart,
+			ongameover
+		}
 	Uses:
 		None
 	Owns:
@@ -15,12 +23,16 @@ function Revertious(detail={
 	boardsize: 8,     // blocks per line/row
 	gridWidth: -1,    // px per block, -1 for auto
 	padding: -1,      // padding width, -1 for auto
-	lineWidth: 3      // stroke line width
+	lineWidth: 3,     // stroke line width
+	gui: true,        // whether displays on the screen
+	ongameturn:  ()=>{},  // an event callback when one's turn starts
+	ongamestart: ()=>{},  // an event callback when game starts
+	ongameover:  ()=>{},  // an event callback when game ends (No effects yet because judging gameover is not made yet)
 }) {
 	const RT = this;
 	RT.initialized = false;
 
-	let boardsize, gridWidth, padding, lineWidth;
+	let boardsize, gridWidth, padding, lineWidth, gui;
 
 	// Game Init
 	RT.init = function() {
@@ -33,13 +45,58 @@ function Revertious(detail={
 		lineWidth = detail.lineWidth;
 		gridWidth <= 0 && (gridWidth = Math.floor(Math.min(Math.max(window.innerWidth, window.innerHeight)/4*3, Math.min(window.innerWidth, window.innerHeight)) / (boardsize+1)));
 		padding <= 0 && (padding = Math.floor(gridWidth / 2));
+		gui = detail.gui;
+		const ongameturn = detail.ongameturn;
+		const ongamestart = detail.ongamestart;
+		const ongameover = detail.ongameover;
 
 		// Init
 		RT.Config = {
 			boardsize: boardsize,
-			playerCount: 2
+			playerCount: 2,
+			gui: gui,
+			ongameturn: ongameturn,
+			ongamestart: ongamestart,
+			ongameover: ongameover
 		};
 		RT.gaming = false;
+
+		// Init ongameturn, ongamestart, ongameover
+		Object.defineProperty(RT, 'ongameturn', {
+			enumerable: true,
+			configurable: false,
+			get: () => (RT.Config.ongameturn),
+			set: (n) => {
+				if (typeof(n) !== 'function') {
+					throw new TypeError('Revertious.ongameturn: ongameturn must a function');
+				}
+				RT.Config.ongameturn = n;
+			}
+		});
+		Object.defineProperty(RT, 'ongamestart', {
+			enumerable: true,
+			configurable: false,
+			get: () => (RT.Config.ongamestart),
+			set: (n) => {
+				if (typeof(n) !== 'function') {
+					throw new TypeError('Revertious.ongamestart: ongamestart must a function');
+				}
+				RT.Config.ongamestart = n;
+			}
+		});
+		Object.defineProperty(RT, 'ongameover', {
+			enumerable: true,
+			configurable: false,
+			get: () => (RT.Config.ongameover),
+			set: (n) => {
+				if (typeof(n) !== 'function') {
+					throw new TypeError('Revertious.ongameover: ongameover must a function');
+				}
+				RT.Config.ongameover = n;
+			}
+		});
+
+		// Inited, start game
 		RT.initialized = true;
 		RT.startGame();
 		return true;
@@ -47,25 +104,40 @@ function Revertious(detail={
 
 	// New Game
 	RT.startGame = function() {
+		// Init data varibles
 		RT.Data = initData(RT.Data);
 		RT.nextPlayer = 0;
 		RT.History = [];
 		RT.latest = {};
-		RT.GUI = RT.GUI || new RevertiousGUI(RT, {
-			gridWidth: gridWidth,
-			padding:   padding,
-			lineWidth: lineWidth
-		});
-		RT.GUI.init();
-		RT.GUI.makeBoard();
+
+		// Init GUI
+		if (gui) {
+			// Create GUI
+			RT.GUI = RT.GUI || new RevertiousGUI(RT, {
+				gridWidth: gridWidth,
+				padding:   padding,
+				lineWidth: lineWidth
+			});
+			RT.GUI.init();
+			RT.GUI.makeBoard();
+
+			// Init elements
+			const Elms = RT.GUI.Elements;
+			[Elms.btnNewGame.button, Elms.btnStepback.button, Elms.btnGameEnd.button, Elms.btnJudge.button].forEach((btn) => {
+				btn.classList.remove('disabled');
+			})
+		}
+		
+		// Initial items
 		makeInitialChess();
 		randomBomb();
+
+		// Init status
 		RT.gaming = true;
 		RT.onJudge = false;
-		const Elms = RT.GUI.Elements;
-		[Elms.btnNewGame.button, Elms.btnStepback.button, Elms.btnGameEnd.button, Elms.btnJudge.button].forEach((btn) => {
-			btn.classList.remove('disabled');
-		})
+
+		// Event ongamestart
+		RT.Config.ongamestart && RT.Config.ongamestart(RT);
 
 		function initData(data) {
 			const emptyBlock = RT.emptyBlock = {
@@ -159,7 +231,7 @@ function Revertious(detail={
 		if (!RT.PosAvailable(x, y, true, player)) {return false;}
 
 		// Clear last chess' mark
-		RT.History.length > 0 && RT.GUI.clearMarker(RT.latest.x, RT.latest.y, RT.latest.player);
+		gui && RT.History.length > 0 && RT.GUI.clearMarker(RT.latest.x, RT.latest.y, RT.latest.player);
 
 		// Place chess
 		RT.setBlock({
@@ -183,6 +255,9 @@ function Revertious(detail={
 
 		// Save history
 		RT.saveHistory();
+
+		// Event ongameturn
+		RT.Config.ongameturn && RT.Config.ongameturn(RT);
 	}
 
 	// Set block content both in memory and on board
@@ -201,7 +276,7 @@ function Revertious(detail={
 		Data[x][y] = {type: type, number: content};
 
 		// Set in screen
-		RT.GUI.drawItem(details);
+		gui && RT.GUI.drawItem(details);
 
 		return true;
 	}
@@ -261,7 +336,7 @@ function Revertious(detail={
 		function boom(x, y) {
 			// Remove current bomb first
 			Data[x][y] = RT.emptyBlock;
-			GUI.eraseone(x, y);
+			Config.gui && GUI.eraseone(x, y);
 
 			// Find others
 			const min = RT.getPosInBoard(x-1, y-1);
@@ -271,7 +346,7 @@ function Revertious(detail={
 					if (Data[cx][cy].type === 'chess') {
 						// Clear chesses
 						Data[cx][cy] = RT.emptyBlock;
-						GUI.eraseone(cx, cy);
+						Config.gui && GUI.eraseone(cx, cy);
 					} else if (Data[cx][cy].type === 'bomb') {
 						// Activate other bombs
 						boom(cx, cy);
@@ -282,6 +357,10 @@ function Revertious(detail={
 	}
 
 	RT.tempJudge = function() {
+		if (!gui) {
+			DoLog(LogLevel.Error, 'Revertious.tempJudge: tempJudge is only available while gui is enabled!');
+			return false;
+		}
 		const Elms = RT.GUI.Elements;
 		const button = Elms.btnJudge.button;
 		const Text = CONST.Text.BtnJudge;
@@ -299,6 +378,10 @@ function Revertious(detail={
 	}
 
 	RT.finalJudge = function() {
+		if (!gui) {
+			DoLog(LogLevel.Error, 'Revertious.finalJudge: finalJudge is only available while gui is enabled!');
+			return false;
+		}
 		const Elms = RT.GUI.Elements;
 		RT.userJudge();
 		RT.gaming = false;
@@ -308,23 +391,44 @@ function Revertious(detail={
 	}
 
 	RT.userJudge = function() {
+		// Judge
 		const Config = RT.Config;
-		const scoreMap = RT.Judge();
-		for (let x = 0; x < Config.boardsize; x++) {
-			for (let y = 0; y < Config.boardsize; y++) {
-				RT.Data[x][y].type !== 'chess' && RT.GUI.eraseone(x, y);
-				scoreMap[x][y] !== -1 && RT.Data[x][y].type !== 'chess' && RT.GUI.drawJudger(x, y, scoreMap[x][y]);
+		const result = RT.Judge();
+		const scoreMap = result.scoreMap;
+		const scores = result.scores;
+		const maxScore = getmax(scores);
+		const winner = scores.indexOf(maxScore);
+
+		// Paint
+		if (Config.gui) {
+			for (let x = 0; x < Config.boardsize; x++) {
+				for (let y = 0; y < Config.boardsize; y++) {
+					RT.Data[x][y].type !== 'chess' && RT.GUI.eraseone(x, y);
+					scoreMap[x][y] !== -1 && RT.Data[x][y].type !== 'chess' && RT.GUI.drawJudger(x, y, scoreMap[x][y]);
+				}
 			}
 		}
+		
+		return {
+			winner: winner,
+			maxScore: maxScore,
+			scoreMap: scoreMap,
+			scores: scores
+		};
 	}
 
 	RT.Judge = function() {
 		const Data = RT.Data;
-		const scoreMap = [];
+		const scoreMap = [], scores = [];
+		for (let i = 0; i < RT.Config.playerCount; i++) {
+			scores.push(0);
+		}
 		for (let x = 0; x < boardsize; x++) {
 			scoreMap[x] = [];
 			for (let y = 0; y < boardsize; y++) {
-				scoreMap[x][y] = JudgeBlock(x, y);
+				const owner = JudgeBlock(x, y);
+				scoreMap[x][y] = owner;
+				scores[owner]++;
 			}
 		}
 
@@ -365,7 +469,11 @@ function Revertious(detail={
 
 			return -1;
 		}
-		return scoreMap;
+
+		return {
+			scores: scores,
+			scoreMap: scoreMap
+		};
 	}
 
 	RT.getPosInBoard = function(x, y) {
@@ -380,17 +488,31 @@ function Revertious(detail={
 					y: Math.max(Math.min(y, Config.boardsize-1), 0)
 				}
 		}
-		
+	}
+
+	RT.save = function() {
+		return {
+			Data: JSON.stringify(RT.Data),
+			nextPlayer: RT.nextPlayer,
+			latest: JSON.stringify(RT.latest)
+		};
+	}
+
+	RT.read = function(data) {
+		// Recover
+		//deepSet(data.Data, RT.Data);
+		RT.Data = JSON.parse(data.Data);
+		RT.nextPlayer = data.nextPlayer;
+		RT.latest = JSON.parse(data.latest);
+
+		// Paint
+		gui && RT.GUI.drawAll();
 	}
 
 	RT.saveHistory = function() {
 		const History = RT.History;
 
-		History.push({
-			Data: JSON.stringify(RT.Data),
-			nextPlayer: RT.nextPlayer,
-			latest: JSON.stringify(RT.latest)
-		})
+		History.push(RT.save())
 	}
 
 	RT.readHistroy = function(num) {
@@ -401,16 +523,10 @@ function Revertious(detail={
 		if (index < 0) {return false;}
 
 		// Recover
-		//deepSet(data.Data, RT.Data);
-		RT.Data = JSON.parse(data.Data);
-		RT.nextPlayer = data.nextPlayer;
-		RT.latest = JSON.parse(data.latest);
+		RT.read(data);
 
 		// Delete all 'Futures'
 		RT.History = RT.History.slice(0, index+1);
-
-		// Paint
-		RT.GUI.drawAll();
 
 		return true;
 	}
